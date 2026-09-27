@@ -90,7 +90,7 @@ modifica usuarios ni contraseñas de una base ya existente.
 3. Generar y revisar una migración de EF Core.
 4. Levantar PostgreSQL y aplicar la migración.
 5. Registrar y ejecutar los seeders de autores, categorías y libros, en ese orden.
-6. Implementar las tres consultas siguiendo `Query`, `UseCase`, DTO y `MapperExtensions`.
+6. Implementar las tres consultas siguiendo `Query`, `UseCase`, DTO y perfiles de AutoMapper.
 
 Docker crea el servidor y la base vacía. Las tablas de la aplicación se crearán con
 migraciones de EF Core; no se usarán scripts SQL de inicialización ni `EnsureCreated`.
@@ -143,6 +143,17 @@ calcula el dígito de control ni verifica registros editoriales. La igualdad usa
 valor normalizado; no se convierte entre ISBN-10 e ISBN-13.
 
 ## Próxima etapa
+
+AutoMapper está registrado en `ApplicationServicesRegistry` para descubrir los
+perfiles de `Library.Application`. Al implementar las consultas se crearán los
+DTO y sus clases `Profile` junto a cada caso de uso; los `UseCase` recibirán
+`IMapper` por inyección de dependencias. Todavía no hay mapeos concretos porque
+los DTO están pendientes. Se usará AutoMapper en lugar de `MapperExtensions`
+por indicación del usuario; las dependencias entre capas se mantienen.
+
+AutoMapper 16 usa licencia. La clave, cuando corresponda, se configura mediante
+`AUTOMAPPER_LICENSE_KEY`, sin guardarla en el repositorio. Consulta la
+[configuración oficial de licencia](https://docs.automapper.io/en/latest/License-configuration.html).
 
 Crear las configuraciones de EF Core para los tres modelos y sus value objects,
 agregar los `DbSet` y generar la migración inicial para PostgreSQL. Después se
