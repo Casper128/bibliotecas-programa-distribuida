@@ -1,4 +1,8 @@
 using Library.Application.Contracts.Persistence;
+using Library.Persistence.Seeds;
+using Library.Persistence.Seeds.Authors;
+using Library.Persistence.Seeds.Books;
+using Library.Persistence.Seeds.Categories;
 using Library.Persistence.UnitOfWorks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +22,11 @@ namespace Library.Persistence
 
             services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
 
-            // Los repositorios específicos y los IDataSeeder se registrarán junto con el modelo.
+            // Seeders: primero los catálogos y después los libros relacionados.
+            services.AddScoped<IDataSeeder, AuthorSeeder>();
+            services.AddScoped<IDataSeeder, CategorySeeder>();
+            services.AddScoped<IDataSeeder, BookSeeder>();
+
             return services;
         }
     }

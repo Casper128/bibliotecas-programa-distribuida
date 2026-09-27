@@ -11,8 +11,10 @@ el registro del proveedor PostgreSQL y el mecanismo de ejecución de semillas.
 El dominio incluye los modelos `Book`, `Author` y `Category`, y los value objects
 `Isbn` y `PublicationYear`. Persistence incluye sus mapeos, los tres `DbSet` y
 la migración `InitialCreate`, generada pero aún sin aplicar a PostgreSQL.
-Las semillas concretas, los repositorios y las consultas aún están pendientes.
-La API puede iniciar en desarrollo, pero todavía no tiene endpoints de catálogo.
+Las semillas de autores, categorías y libros están implementadas y registradas.
+Los repositorios y las consultas aún están pendientes. Para iniciar la API ahora
+se necesita PostgreSQL disponible con la migración aplicada; todavía no hay
+endpoints de catálogo.
 El Seguimiento 1 no exige pruebas; se omite el proyecto Tests del ejemplo.
 
 El enunciado solicita SQL Server. Por indicación del usuario esta solución utilizará
@@ -38,8 +40,8 @@ Se mantienen las carpetas `Entities`, `Common/ValueObjects`, `Exceptions`,
 Se conserva `BussinesRuleException`, incluido su nombre original, para seguir la
 convención del ejemplo. `DataBaseSeeder` resuelve las implementaciones de
 `IDataSeeder` por inyección de dependencias y las ejecuta según `Order`, igual
-que en la referencia. Actualmente no hay implementaciones registradas ni datos
-insertados. `EfCoreUnitOfWork.RollbackAsync` descarta cambios pendientes del contexto;
+que en la referencia. Están registrados `AuthorSeeder`, `CategorySeeder` y
+`BookSeeder`. `EfCoreUnitOfWork.RollbackAsync` descarta cambios pendientes del contexto;
 no deshace un commit ya guardado.
 
 Se fija `Microsoft.OpenApi` en 2.7.5 para corregir la advertencia NU1903 de la
@@ -60,6 +62,8 @@ docker compose up -d --wait postgres
 dotnet restore Library.slnx
 dotnet tool restore
 dotnet build Library.slnx
+ASPNETCORE_ENVIRONMENT=Development dotnet ef database update \
+  --project Library.Persistence --startup-project Library.Api
 dotnet run --project Library.Api --launch-profile https
 ```
 
@@ -104,9 +108,38 @@ ASPNETCORE_ENVIRONMENT=Development dotnet ef database update \
   --project Library.Persistence --startup-project Library.Api
 ```
 
-La API llama a `DataBaseSeeder.SeedAsync` al iniciar, como el ejemplo. Cuando existan
-seeders concretos, será necesario aplicar las migraciones antes de iniciar la API.
-Cada seeder comprobará la existencia de sus registros para evitar duplicados.
+La API llama a `DataBaseSeeder.SeedAsync` al iniciar, como el ejemplo. Aplica las
+migraciones antes de iniciar la API. Las semillas insertan los datos con EF Core
+y los constructores del dominio; no requieren otra migración ni scripts SQL.
+
+## Semillas del catálogo
+
+| Orden | Seeder | Datos ficticios de ejemplo |
+| --- | --- | --- |
+| 1 | `AuthorSeeder` | Ana Torres, Luis Moreno y Clara Ríos. |
+| 2 | `CategorySeeder` | Novela, Tecnología y Ciencia. |
+| 3 | `BookSeeder` | Cuatro libros: dos novelas, uno de tecnología y uno de ciencia. |
+
+Cada implementación recibe `DataContext`, usa `AnyAsync` y guarda con
+`SaveChangesAsync`, siguiendo el patrón del ejemplo. Comprueba cada autor y
+categoría por nombre y cada libro por ISBN antes de insertarlo. Así puede
+completar una carga parcial y omitir los registros existentes en arranques
+sucesivos; no modifica sus datos. Los libros consultan los IDs de los autores y
+categorías guardados por las semillas anteriores. Todos los datos, incluidos los
+ISBN, son ilustrativos y no representan un catálogo editorial real.
+
+Para comprobar la carga en una base nueva, inicia la API y ejecuta desde esta carpeta:
+
+```sh
+docker compose exec postgres psql -U library -d library -c \
+  'SELECT (SELECT COUNT(*) FROM "Authors") AS autores, (SELECT COUNT(*) FROM "Categories") AS categorias, (SELECT COUNT(*) FROM "Books") AS libros;'
+```
+
+El resultado esperado es 3 autores, 3 categorías y 4 libros. Reinicia la API y
+repite la consulta: los conteos deben mantenerse. Si cambiaste usuario o base en
+`.env`, ajusta los argumentos de `psql`. Esta comprobación está pendiente de
+ejecución porque Docker no estaba disponible. La semilla está pensada para el
+arranque de una sola instancia local, como el proyecto base.
 
 ## Dominio implementado
 
@@ -167,8 +200,8 @@ AutoMapper 16 usa licencia. La clave, cuando corresponda, se configura mediante
 `AUTOMAPPER_LICENSE_KEY`, sin guardarla en el repositorio. Consulta la
 [configuración oficial de licencia](https://docs.automapper.io/en/latest/License-configuration.html).
 
-Aplicar la migración a PostgreSQL e implementar las semillas ordenadas, los
-repositorios y las tres consultas. Los nombres de código
+Aplicar la migración a PostgreSQL y verificar las semillas. Después, implementar
+los repositorios y las tres consultas. Los nombres de código
 seguirán en inglés como el ejemplo; la documentación y los commits, en español.
 
 ## Validación de esta etapa
@@ -180,7 +213,8 @@ seguirán en inglés como el ejemplo; la documentación y los commits, en españ
 - `ef migrations has-pending-model-changes`: el modelo coincide con la migración.
 - Script SQL idempotente de la migración generado y revisado, sin ejecutarlo.
 - `ef dbcontext info`: reconoce el proveedor Npgsql, base `library` y puerto 5433.
-- Arranque de la API en desarrollo: OpenAPI responde HTTP 200 y no contiene operaciones.
+- El arranque de la API se verificó antes de registrar las semillas; la nueva
+  carga al iniciar está pendiente de validación con PostgreSQL disponible.
 - `docker compose --env-file .env.example config --quiet`: correcto.
 - PostgreSQL no se inició ni se probó una conexión real: el motor de Docker estaba apagado.
 
