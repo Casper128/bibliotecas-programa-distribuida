@@ -9,8 +9,9 @@ Se crearon la solución y sus cuatro proyectos, las referencias entre capas, el
 mediador propio, los contratos de repositorio y Unit of Work, el contexto de EF Core,
 el registro del proveedor PostgreSQL y el mecanismo de ejecución de semillas.
 El dominio incluye los modelos `Book`, `Author` y `Category`, y los value objects
-`Isbn` y `PublicationYear`. Los mapeos, las migraciones, las semillas concretas y
-las consultas aún están pendientes.
+`Isbn` y `PublicationYear`. Persistence incluye sus mapeos, los tres `DbSet` y
+la migración `InitialCreate`, generada pero aún sin aplicar a PostgreSQL.
+Las semillas concretas, los repositorios y las consultas aún están pendientes.
 La API puede iniciar en desarrollo, pero todavía no tiene endpoints de catálogo.
 El Seguimiento 1 no exige pruebas; se omite el proyecto Tests del ejemplo.
 
@@ -94,13 +95,11 @@ modifica usuarios ni contraseñas de una base ya existente.
 
 Docker crea el servidor y la base vacía. Las tablas de la aplicación se crearán con
 migraciones de EF Core; no se usarán scripts SQL de inicialización ni `EnsureCreated`.
-No generes la migración inicial hasta que hayamos completado el modelo.
-Los siguientes comandos se ejecutarán **en esa etapa**, desde esta carpeta:
+La migración `InitialCreate` ya está generada en `Library.Persistence/Migrations`.
+Para aplicarla, inicia Docker y ejecuta desde esta carpeta (con `.env` configurado):
 
 ```sh
-ASPNETCORE_ENVIRONMENT=Development dotnet ef migrations add InitialCreate \
-  --project Library.Persistence --startup-project Library.Api --output-dir Migrations
-
+docker compose up -d --wait postgres
 ASPNETCORE_ENVIRONMENT=Development dotnet ef database update \
   --project Library.Persistence --startup-project Library.Api
 ```
@@ -142,6 +141,19 @@ Para mantener esta etapa sencilla, el ISBN solo valida su formato básico; no
 calcula el dígito de control ni verifica registros editoriales. La igualdad usa el
 valor normalizado; no se convierte entre ISBN-10 e ISBN-13.
 
+## Persistencia implementada
+
+`Configurations` contiene `AuthorConfig`, `CategoryConfig` y `BookConfig`, que
+implementan `IEntityTypeConfiguration<T>` igual que el proyecto base.
+`DataContext` las carga mediante `ApplyConfigurationsFromAssembly`.
+
+La migración crea las tablas `Authors`, `Categories` y `Books`. Los nombres y
+títulos respetan los límites del dominio. `Isbn` y `PublicationYear` se mapean
+con `OwnsOne` a columnas obligatorias de `Books`, sin tablas adicionales.
+Las relaciones con autor y categoría usan claves foráneas e índices, y
+`DeleteBehavior.Restrict` evita eliminar autores o categorías asociados a libros.
+Referencia: [tipos propios de EF Core](https://learn.microsoft.com/en-us/ef/core/modeling/owned-entities).
+
 ## Próxima etapa
 
 AutoMapper está registrado en `ApplicationServicesRegistry` para descubrir los
@@ -155,15 +167,18 @@ AutoMapper 16 usa licencia. La clave, cuando corresponda, se configura mediante
 `AUTOMAPPER_LICENSE_KEY`, sin guardarla en el repositorio. Consulta la
 [configuración oficial de licencia](https://docs.automapper.io/en/latest/License-configuration.html).
 
-Crear las configuraciones de EF Core para los tres modelos y sus value objects,
-agregar los `DbSet` y generar la migración inicial para PostgreSQL. Después se
-implementarán las semillas ordenadas y las tres consultas. Los nombres de código
+Aplicar la migración a PostgreSQL e implementar las semillas ordenadas, los
+repositorios y las tres consultas. Los nombres de código
 seguirán en inglés como el ejemplo; la documentación y los commits, en español.
 
 ## Validación de esta etapa
 
 - Compilación de los cuatro proyectos: cero errores y cero advertencias.
 - Restauración de la herramienta local `dotnet-ef` 10.0.0: correcta.
+- Migración `InitialCreate` generada con EF Core y revisada: tres tablas,
+  columnas obligatorias y relaciones con borrado restringido.
+- `ef migrations has-pending-model-changes`: el modelo coincide con la migración.
+- Script SQL idempotente de la migración generado y revisado, sin ejecutarlo.
 - `ef dbcontext info`: reconoce el proveedor Npgsql, base `library` y puerto 5433.
 - Arranque de la API en desarrollo: OpenAPI responde HTTP 200 y no contiene operaciones.
 - `docker compose --env-file .env.example config --quiet`: correcto.
