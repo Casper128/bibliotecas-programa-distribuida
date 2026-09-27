@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Core/">
+    <Project Path="Library.Application/Library.Application.csproj" />
+    <Project Path="Library.Domain/Library.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Infrastructure/">
+    <Project Path="Library.Persistence/Library.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/Presenters/">
+    <Project Path="Library.Api/Library.Api.csproj" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="README.md" />
+    <File Path="compose.yaml" />
+  </Folder>
+</Solution>
