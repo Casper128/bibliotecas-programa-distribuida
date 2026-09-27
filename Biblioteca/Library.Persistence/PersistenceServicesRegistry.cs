@@ -1,4 +1,6 @@
 using Library.Application.Contracts.Persistence;
+using Library.Application.Contracts.Repositories;
+using Library.Persistence.Repositories;
 using Library.Persistence.Seeds;
 using Library.Persistence.Seeds.Authors;
 using Library.Persistence.Seeds.Books;
@@ -21,6 +23,9 @@ namespace Library.Persistence
             });
 
             services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
+            services.AddScoped<IBooksRepository, BooksRepository>();
+            services.AddScoped<IAuthorsRepository, AuthorsRepository>();
+            services.AddScoped<ICategoriesRepository, CategoriesRepository>();
 
             // Seeders: primero los catálogos y después los libros relacionados.
             services.AddScoped<IDataSeeder, AuthorSeeder>();

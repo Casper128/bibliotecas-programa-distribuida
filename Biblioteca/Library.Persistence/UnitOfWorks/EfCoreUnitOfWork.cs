@@ -1,4 +1,5 @@
 using Library.Application.Contracts.Persistence;
+using Library.Application.Contracts.Repositories;
 
 namespace Library.Persistence.UnitOfWorks
 {
@@ -6,9 +7,19 @@ namespace Library.Persistence.UnitOfWorks
     {
         private readonly DataContext _context;
 
-        public EfCoreUnitOfWork(DataContext context)
+        public IBooksRepository Books { get; }
+        public IAuthorsRepository Authors { get; }
+        public ICategoriesRepository Categories { get; }
+
+        public EfCoreUnitOfWork(DataContext context,
+                               IBooksRepository books,
+                               IAuthorsRepository authors,
+                               ICategoriesRepository categories)
         {
             _context = context;
+            Books = books;
+            Authors = authors;
+            Categories = categories;
         }
 
         public async Task CommitAsync()

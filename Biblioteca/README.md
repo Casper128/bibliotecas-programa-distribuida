@@ -12,7 +12,8 @@ El dominio incluye los modelos `Book`, `Author` y `Category`, y los value object
 `Isbn` y `PublicationYear`. Persistence incluye sus mapeos, los tres `DbSet` y
 la migración `InitialCreate`, generada pero aún sin aplicar a PostgreSQL.
 Las semillas de autores, categorías y libros están implementadas y registradas.
-Los repositorios y las consultas aún están pendientes. Para iniciar la API ahora
+Los repositorios están implementados; los casos de uso y controladores siguen
+pendientes. Para iniciar la API ahora
 se necesita PostgreSQL disponible con la migración aplicada; todavía no hay
 endpoints de catálogo.
 El Seguimiento 1 no exige pruebas; se omite el proyecto Tests del ejemplo.
@@ -187,6 +188,42 @@ Las relaciones con autor y categoría usan claves foráneas e índices, y
 `DeleteBehavior.Restrict` evita eliminar autores o categorías asociados a libros.
 Referencia: [tipos propios de EF Core](https://learn.microsoft.com/en-us/ef/core/modeling/owned-entities).
 
+## Repositorios implementados
+
+`IBooksRepository` vive en `Application/Contracts/Repositories` y hereda de
+`IRepository<Book>`, como el repositorio específico del ejemplo. En Persistence,
+`BooksRepository` hereda de `Repository<Book>` y se registra con alcance scoped.
+
+También existen `IAuthorsRepository`/`AuthorsRepository` e
+`ICategoriesRepository`/`CategoriesRepository`, registrados con el mismo alcance.
+Reutilizan el repositorio genérico para consultar autores y categorías por ID o
+listar sus registros. Estas consultas no cargan automáticamente la colección
+`Books`; tener una propiedad de navegación no implica cargarla desde la base.
+Las consultas de libros sí incluyen explícitamente su autor y categoría.
+No existe una relación directa adicional entre autor y categoría: se vinculan
+mediante los libros.
+
+| Consulta | Resultado |
+| --- | --- |
+| `GetListAsync` | Todos los libros, ordenados por título y luego por ID. |
+| `GetByIdAsync` | Un libro o `null` si el ID no existe. |
+| `GetByCategoryAsync` | Libros de la categoría indicada, o una colección vacía. |
+
+Las tres consultas incluyen autor y categoría, usan `AsNoTracking` y aceptan
+`CancellationToken`. Devuelven entidades; la transformación a DTO con AutoMapper
+se hará en los casos de uso. Los value objects se cargan como parte del libro.
+
+El repositorio genérico conserva las operaciones del contrato original. Las
+operaciones de escritura solo preparan cambios en el contexto: el guardado
+corresponde a `IUnitOfWork.CommitAsync`. Las consultas no requieren commit y esta
+versión no expondrá operaciones de escritura en la API.
+
+`IUnitOfWork` expone los repositorios mediante `Books`, `Authors` y `Categories`.
+`EfCoreUnitOfWork` recibe sus interfaces y `DataContext` por el constructor.
+Todos están registrados con alcance scoped, por lo que comparten el mismo
+contexto dentro de una petición. Los casos de uso recibirán `IUnitOfWork` y
+consultarán, por ejemplo, `await unitOfWork.Books.GetListAsync()`.
+
 ## Próxima etapa
 
 AutoMapper está registrado en `ApplicationServicesRegistry` para descubrir los
@@ -200,13 +237,17 @@ AutoMapper 16 usa licencia. La clave, cuando corresponda, se configura mediante
 `AUTOMAPPER_LICENSE_KEY`, sin guardarla en el repositorio. Consulta la
 [configuración oficial de licencia](https://docs.automapper.io/en/latest/License-configuration.html).
 
-Aplicar la migración a PostgreSQL y verificar las semillas. Después, implementar
-los repositorios y las tres consultas. Los nombres de código
+Implementar los tres casos de uso con sus Query, DTO y perfiles de AutoMapper;
+después, los controladores que los invocarán mediante el mediador. Al finalizar,
+habilitar Docker, aplicar la migración y verificar semillas y consultas.
+Los nombres de código
 seguirán en inglés como el ejemplo; la documentación y los commits, en español.
 
 ## Validación de esta etapa
 
 - Compilación de los cuatro proyectos: cero errores y cero advertencias.
+- Repositorios compilados; las consultas reales a PostgreSQL quedan pendientes
+  hasta habilitar Docker y aplicar la migración.
 - Restauración de la herramienta local `dotnet-ef` 10.0.0: correcta.
 - Migración `InitialCreate` generada con EF Core y revisada: tres tablas,
   columnas obligatorias y relaciones con borrado restringido.
