@@ -1,5 +1,3 @@
-2026-09-27 21:08:59.950 [info] Installing C# dependencies...
-
 ## Requisitos
 
 - SDK de .NET 10 (`dotnet --version`).

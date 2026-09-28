@@ -480,8 +480,3 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
-
-# Este repositorio contiene únicamente el proyecto Biblioteca.
-/*
-!/.gitignore
-!/Biblioteca/
