@@ -2,6 +2,8 @@ using Library.Application;
 using Library.Persistence;
 using Library.Persistence.Seeds;
 
+DotNetEnv.Env.NoClobber().TraversePath().Load();
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -15,6 +17,10 @@ WebApplication app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "Biblioteca API v1");
+    });
 }
 
 await DataBaseSeeder.SeedAsync(app.Services);
